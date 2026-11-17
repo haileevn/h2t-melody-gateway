@@ -1,0 +1,18 @@
+{
+  "android": {
+    "version": "2.1.0",
+    "build": 21,
+    "url": "https://github.com/YOUR_ACCOUNT/YOUR_REPO/releases/download/v2.1.0/H2T-Melody-v2.1.0.apk",
+    "sha256": "REPLACE_WITH_64_CHARACTER_SHA256_HEX",
+    "notes": "Cải tiến trình phát, đồng bộ Telegram và sửa lỗi.",
+    "mandatory": false
+  },
+  "ios": {
+    "version": "2.1.0",
+    "build": 21,
+    "url": "https://github.com/YOUR_ACCOUNT/YOUR_REPO/releases/download/v2.1.0/H2T-Melody-v2.1.0-unsigned.ipa",
+    "sha256": "REPLACE_WITH_64_CHARACTER_SHA256_HEX",
+    "notes": "Cải tiến trình phát, đồng bộ Telegram và sửa lỗi.",
+    "mandatory": false
+  }
+}

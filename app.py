@@ -15,6 +15,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import StreamingResponse, Response
 from pydantic import BaseModel
 from telethon import TelegramClient, utils
+from updates import latest_release
 from telethon.tl.types import Channel, DocumentAttributeAudio, DocumentAttributeFilename
 
 API_ID = int(os.environ.get('TELEGRAM_API_ID', '0'))
@@ -126,6 +127,19 @@ async def get_audio_message(channel_id: int, message_id: int):
     if not audio_info(msg):
         raise HTTPException(status_code=404, detail='Audio not found')
     return msg
+
+
+@app.get('/v1/updates/latest', dependencies=[Depends(authorized)])
+async def update_manifest(platform: str):
+    try:
+        return latest_release(os.environ.get('H2T_RELEASES_PATH', '/data/h2t-releases.json'), platform)
+    except ValueError as exc:
+        if str(exc) == 'Unsupported platform':
+            raise HTTPException(status_code=422, detail='Platform must be android or ios')
+        # Avoid exposing a broken/partially-written release as a valid update.
+        raise HTTPException(status_code=503, detail='Release manifest is unavailable')
+    except (OSError, json.JSONDecodeError, TypeError):
+        raise HTTPException(status_code=503, detail='Release manifest is unavailable')
 
 
 @app.get('/v1/health', dependencies=[Depends(authorized)])

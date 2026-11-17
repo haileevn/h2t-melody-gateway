@@ -1,5 +1,6 @@
 """HTTP contract tests against mock Telegram; do not require a live account."""
 import importlib
+import tempfile
 import os
 import sys
 import time
@@ -117,3 +118,46 @@ class HttpApiTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+class UpdateRouteTests(unittest.TestCase):
+    def setUp(self):
+        self.client = TestClient(api.app, headers={'Authorization': 'Bearer ' + 'a' * 64})
+
+    def tearDown(self):
+        self.client.close()
+
+    def test_update_route_rejects_missing_auth(self):
+        result = self.client.get('/v1/updates/latest?platform=ios', headers={'Authorization': ''})
+        self.assertEqual(result.status_code, 401)
+
+    def test_update_route_empty_manifest_and_bad_platform(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.dict(os.environ, {'H2T_RELEASES_PATH': tmp + '/not-published.json'}):
+                result = self.client.get('/v1/updates/latest?platform=ios')
+                self.assertEqual(result.status_code, 200)
+                self.assertEqual(result.json(), {'available': False})
+                self.assertEqual(self.client.get('/v1/updates/latest?platform=bad').status_code, 422)
+
+    def test_update_route_valid_release(self):
+        import json
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as tmp:
+            file = Path(tmp) / 'releases.json'
+            file.write_text(json.dumps({'ios': {
+                'version': '2.1.0', 'build': 21,
+                'url': 'https://example.org/H2T-Melody.ipa', 'sha256': 'f' * 64,
+                'notes': 'Release notes', 'mandatory': False,
+            }}), encoding='utf-8')
+            with patch.dict(os.environ, {'H2T_RELEASES_PATH': str(file)}):
+                resp = self.client.get('/v1/updates/latest?platform=ios')
+                self.assertEqual(resp.status_code, 200)
+                self.assertEqual(resp.json()['build'], 21)
+                self.assertEqual(resp.json()['version'], '2.1.0')
+
+    def test_update_route_corrupt_manifest_returns_503(self):
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as tmp:
+            file = Path(tmp) / 'releases.json'
+            file.write_text('{broken-json', encoding='utf-8')
+            with patch.dict(os.environ, {'H2T_RELEASES_PATH': str(file)}):
+                self.assertEqual(self.client.get('/v1/updates/latest?platform=ios').status_code, 503)
